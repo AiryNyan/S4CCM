@@ -1,0 +1,505 @@
+{
+ "levels": {
+  "CHILD": [
+   50,
+   1000,
+   1680,
+   2350,
+   3023,
+   4350,
+   5000,
+   5700,
+   6400,
+   7050
+  ],
+  "MAJOR": [
+   100,
+   1440,
+   2160,
+   3600,
+   5280,
+   7200,
+   10140,
+   13440,
+   17100,
+   21120
+  ],
+  "MINOR": [
+   100,
+   1440,
+   2160,
+   3600,
+   5280
+  ]
+ },
+ "skills": {
+  "9857": {
+   "ko": "",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Reaping"
+  },
+  "16659": {
+   "ko": "운동",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "skill_Fitness"
+  },
+  "16695": {
+   "ko": "음료 혼합",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Bartending"
+  },
+  "16698": {
+   "ko": "코미디",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Comedy"
+  },
+  "16699": {
+   "ko": "카리스마",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Charisma"
+  },
+  "16700": {
+   "ko": "원예",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Gardening"
+  },
+  "16701": {
+   "ko": "고급 요리",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_GourmetCooking"
+  },
+  "16702": {
+   "ko": "기타",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Guitar"
+  },
+  "16703": {
+   "ko": "프로그래밍",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Programming"
+  },
+  "16704": {
+   "ko": "손재주",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Handiness"
+  },
+  "16705": {
+   "ko": "요리",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_HomestyleCooking"
+  },
+  "16706": {
+   "ko": "논리",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Logic"
+  },
+  "16707": {
+   "ko": "장난",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Mischief"
+  },
+  "16708": {
+   "ko": "그림",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Painting"
+  },
+  "16709": {
+   "ko": "피아노",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Piano"
+  },
+  "16710": {
+   "ko": "로켓 공학",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_RocketScience"
+  },
+  "16712": {
+   "ko": "비디오 게임",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_VideoGaming"
+  },
+  "16713": {
+   "ko": "바이올린",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Violin"
+  },
+  "16714": {
+   "ko": "글쓰기",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Writing"
+  },
+  "16718": {
+   "ko": "창의력",
+   "en": "",
+   "type": "CHILD",
+   "tuning": "statistic_Skill_Child_Creativity"
+  },
+  "16719": {
+   "ko": "사고력",
+   "en": "",
+   "type": "CHILD",
+   "tuning": "statistic_Skill_Child_Mental"
+  },
+  "16720": {
+   "ko": "민첩성",
+   "en": "",
+   "type": "CHILD",
+   "tuning": "statistic_Skill_Child_Motor"
+  },
+  "16721": {
+   "ko": "사교력",
+   "en": "",
+   "type": "CHILD",
+   "tuning": "statistic_Skill_Child_Social"
+  },
+  "39397": {
+   "ko": "낚시",
+   "en": "",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Fishing"
+  },
+  "101920": {
+   "ko": "약초학",
+   "en": "Herbalism",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Herbalism"
+  },
+  "104198": {
+   "ko": "제빵",
+   "en": "Baking",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Baking"
+  },
+  "105774": {
+   "ko": "사진",
+   "en": "Photography",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMajor_Photography"
+  },
+  "111902": {
+   "ko": "판매",
+   "en": "Sales",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Retail_Sales"
+  },
+  "111903": {
+   "ko": "직업의식",
+   "en": "Work Ethic",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Retail_WorkEthic"
+  },
+  "111904": {
+   "ko": "관리 기술",
+   "en": "Maintenance Skill",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Retail_Maintenance"
+  },
+  "117858": {
+   "ko": "웰빙",
+   "en": "Wellness",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Wellness"
+  },
+  "121612": {
+   "ko": "DJ 믹싱",
+   "en": "DJ Mixing",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_DJMixing"
+  },
+  "128145": {
+   "ko": "댄스",
+   "en": "Dancing",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_Dancing"
+  },
+  "137811": {
+   "ko": "노래",
+   "en": "Singing",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Singing"
+  },
+  "149556": {
+   "ko": "뱀파이어학",
+   "en": "Vampire Lore",
+   "type": "4",
+   "tuning": "statistic_Skill_Hidden_VampireLore"
+  },
+  "149665": {
+   "ko": "파이프 오르간",
+   "en": "Pipe Organ ",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_PipeOrgan"
+  },
+  "158659": {
+   "ko": "볼링",
+   "en": "Bowling",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Bowling"
+  },
+  "160504": {
+   "ko": "육아",
+   "en": "Parenting",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Parenting"
+  },
+  "161190": {
+   "ko": "수의학",
+   "en": "Veterinarian",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Veterinarian"
+  },
+  "161220": {
+   "ko": "개 훈련",
+   "en": "Pet Training",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_DogTraining"
+  },
+  "165900": {
+   "ko": "암벽 등반",
+   "en": "Rock Climbing",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Hidden_TreadMill_Rock_ClimbingWall_Climb"
+  },
+  "174237": {
+   "ko": "고고학",
+   "en": "Archaeology",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Archaeology"
+  },
+  "174687": {
+   "ko": "셀바도라다 문화",
+   "en": "Selvadoradian Culture",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_LocalCulture"
+  },
+  "179925": {
+   "ko": "스케이팅",
+   "en": "Skating",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Hidden_Skating"
+  },
+  "186703": {
+   "ko": "꽃꽂이",
+   "en": "Flower Arranging",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_FlowerArranging"
+  },
+  "192655": {
+   "ko": "미디어 제작",
+   "en": "Media Production",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_MediaProduction"
+  },
+  "194727": {
+   "ko": "연기",
+   "en": "Acting",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Acting"
+  },
+  "212561": {
+   "ko": "탁구",
+   "en": "Ping Pong",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_PingPong"
+  },
+  "213548": {
+   "ko": "주스 퐁",
+   "en": "Juice Pong",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_JuicePong"
+  },
+  "217413": {
+   "ko": "로봇공학",
+   "en": "Robotics",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Robotics"
+  },
+  "221014": {
+   "ko": "연구 및 논쟁",
+   "en": "Research & Debate",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_ResearchDebate"
+  },
+  "224628": {
+   "ko": "",
+   "en": "Temp Skill",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_Hidden_ClassroomShell_Tutor_PickedSkill"
+  },
+  "224672": {
+   "ko": "로봇 성능 향상",
+   "en": "Robot Enhancement",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_HumanoidRobot_Enhancement"
+  },
+  "231908": {
+   "ko": "제작",
+   "en": "Fabrication",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Fabrication"
+  },
+  "234806": {
+   "ko": "탄산 주스 제조",
+   "en": "Juice Fizzing",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_JuiceFizzing"
+  },
+  "239521": {
+   "ko": "뜨개질",
+   "en": "Knitting",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Knitting"
+  },
+  "245613": {
+   "ko": "스키",
+   "en": "Skiing",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Skiing"
+  },
+  "245639": {
+   "ko": "암벽 등반",
+   "en": "Rock Climbing",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_RockClimbing"
+  },
+  "246054": {
+   "ko": "스노보드",
+   "en": "Snowboarding",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Snowboarding"
+  },
+  "255249": {
+   "ko": "영매",
+   "en": "Medium",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_Medium"
+  },
+  "259758": {
+   "ko": "십자수",
+   "en": "Cross-stitch",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_CrossStitch"
+  },
+  "274197": {
+   "ko": "사업가",
+   "en": "Entrepreneur",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_Entrepreneur"
+  },
+  "315761": {
+   "ko": "과즙 제조",
+   "en": "Nectar Making",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_RanchNectar"
+  },
+  "322708": {
+   "ko": "승마",
+   "en": "Horse Riding",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_EquestrianSkill"
+  },
+  "324352": {
+   "ko": "사교",
+   "en": "",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_Hidden_Infant_Social_AgeUp"
+  },
+  "324631": {
+   "ko": "기질",
+   "en": "Temperament",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_Horse_Temperament"
+  },
+  "324632": {
+   "ko": "민첩성",
+   "en": "Agility",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_Horse_Agility"
+  },
+  "324633": {
+   "ko": "점프",
+   "en": "Jumping",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_Horse_Jumping"
+  },
+  "324634": {
+   "ko": "지구력",
+   "en": "Endurance",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_Horse_Endurance"
+  },
+  "350972": {
+   "ko": "보석 공예",
+   "en": "Gemology",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Gemology"
+  },
+  "368684": {
+   "ko": "연애",
+   "en": "Romance",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Romance"
+  },
+  "371129": {
+   "ko": "도자기 공예",
+   "en": "Pottery",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Pottery"
+  },
+  "371481": {
+   "ko": "문신",
+   "en": "Tattooing",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Tattooing"
+  },
+  "380495": {
+   "ko": "죽음학",
+   "en": "Thanatology",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_AdultMinor_Thanatology"
+  },
+  "434909": {
+   "ko": "자연 생활",
+   "en": "Natural Living",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_NLS"
+  },
+  "439222": {
+   "ko": "약제술",
+   "en": "Apothecary",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Apothecary"
+  },
+  "458742": {
+   "ko": "검술",
+   "en": "Swordsmanship",
+   "type": "MAJOR",
+   "tuning": "statistic_Skill_AdultMajor_Swordsmanship"
+  },
+  "469915": {
+   "ko": "곤충학",
+   "en": "Entomology",
+   "type": "MINOR",
+   "tuning": "statistic_Skill_All_Ages_Minor_Entomology"
+  }
+ }
+}

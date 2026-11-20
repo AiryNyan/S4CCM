@@ -1,0 +1,14 @@
+[package]
+name = "s4ccm-ffi"
+version = "1.3.0"
+edition = "2021"
+
+# Qt 화면(C++)이 불러 쓰는 DLL. 경계는 "메서드 이름 + JSON 인자 → JSON 결과" 한 가지뿐이다.
+[lib]
+name = "s4ccm_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+s4ccm-core = { path = "../core" }
+serde_json = { version = "1", features = ["preserve_order"] }
+parking_lot = "0.12"

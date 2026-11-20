@@ -1,0 +1,4 @@
+# 번들 SQLite(C 소스)를 컴파일할 때 쓰는 llvm-mingw 컴파일러.
+[env]
+CC_x86_64_pc_windows_gnullvm = "C:/Users/user/.local/llvm-mingw-20261006-ucrt-x86_64/bin/x86_64-w64-mingw32-clang.exe"
+AR_x86_64_pc_windows_gnullvm = "C:/Users/user/.local/llvm-mingw-20261006-ucrt-x86_64/bin/llvm-ar.exe"

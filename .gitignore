@@ -1,0 +1,23 @@
+# 기본은 모두 빼고, 올릴 것만 아래에서 다시 넣는다.
+# (이 폴더에는 게임에서 추출한 파일, 샘플 CC, 빌드 결과물이 함께 있어서다)
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+
+# Rust 코어 + Qt 화면 (현재 배포판)
+!/rust/
+/rust/target/
+/rust/dist/
+/rust/release/
+/rust/test_home/
+/rust/*.log
+
+# 원본 Python 판 (아이콘·글꼴·데이터는 Rust 빌드에서도 쓴다)
+!/s4ccm/
+!/packaging/
+!/main.py
+!/requirements.txt
+
+__pycache__/
+*.pyc
