@@ -17,6 +17,12 @@ pub const SAME_FILE: &str = "same_file";
 pub const SAME_ITEM: &str = "same_item";
 const ITEM_TYPES: [u32; 3] = [T_CASP, T_OBJD, T_COBJ];
 
+/// 중복 검사에 쓰는 아이템 키: CAS 파츠·오브젝트 정의·카탈로그의 (타입, 인스턴스). 처음 나온 순서대로, 겹치지 않게.
+pub fn keys_of(pk: &Package) -> Vec<(u32, u64)> {
+    let mut seen: HashSet<(u32, u64)> = HashSet::new();
+    pk.by_type(&ITEM_TYPES).map(|e| (e.type_, e.instance)).filter(|k| seen.insert(*k)).collect()
+}
+
 #[derive(Debug, Clone)]
 pub struct DupGroup {
     pub kind: &'static str,
@@ -140,15 +146,24 @@ pub fn find_duplicates(lib: &Library, mut progress: Progress) -> Result<Vec<DupG
     let packages: Vec<&Item> = items.iter().filter(|i| i.kind == "package").collect();
     let mut owners: IndexMap<(u32, u64), Vec<i64>> = IndexMap::new();
     let mut item_keys: HashMap<i64, HashSet<(u32, u64)>> = HashMap::new();
+    // 스캔 때 DB 에 저장해 둔 아이템 키를 쓴다. 아직 저장되지 않은 항목만 파일을 연다.
+    let stored = lib.db.item_keys_map()?;
+    let has_keys = |it: &Item| it.meta.get("keys").map_or(false, crate::library::truthy);
     const CHUNK: usize = 256;
     for (ci, chunk) in packages.chunks(CHUNK).enumerate() {
-        let read: Vec<Option<Vec<(u32, u64)>>> = chunk
-            .par_iter()
-            .map(|it| {
-                let pk = Package::open(&lib.abs(&it.rel_path)).ok()?;
-                Some(pk.by_type(&ITEM_TYPES).map(|e| (e.type_, e.instance)).collect())
-            })
-            .collect();
+        let read: Vec<Option<Vec<(u32, u64)>>> = crate::library::io_pool().install(|| {
+            chunk
+                .par_iter()
+                .map(|it| {
+                    if has_keys(it) {
+                        // 열 수 없던 패키지는 키가 없다 (예전처럼 건너뛴다).
+                        return stored.get(&it.fingerprint).cloned();
+                    }
+                    let pk = Package::open(&lib.abs(&it.rel_path)).ok()?;
+                    Some(pk.by_type(&ITEM_TYPES).map(|e| (e.type_, e.instance)).collect())
+                })
+                .collect()
+        });
         for (k, (it, keys)) in chunk.iter().zip(read).enumerate() {
             let n = ci * CHUNK + k;
             if n % 10 == 0 {

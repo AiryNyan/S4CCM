@@ -166,6 +166,39 @@ static const char16_t* const BISECT[] = {
     u"사건 해결 후 쓸 기자회견문을 준비하는 중…",
 };
 
+static const char16_t* const UPDATE[] = {
+    u"새 버전 상자를 뜯는 중…",
+    u"설명서를 대충 훑어보는 중…",
+    u"헌 나사를 새 나사로 바꾸는 중…",
+    u"반짝이는 새 버튼을 닦는 중…",
+    u"이삿짐 트럭이 도착하는 중…",
+    u"새 버전에게 집 구경을 시켜 주는 중…",
+    u"고친 버그들에게 작별 인사하는 중…",
+    u"페인트가 마를 때까지 기다리는 중…",
+    u"리본 커팅 가위를 찾는 중…",
+    u"새 기능에 이름표를 붙이는 중…",
+    u"업데이트 축하 케이크를 굽는 중…",
+    u"옛 버전 짐을 조심스럽게 싸는 중…",
+    u"전선을 하나씩 다시 꽂는 중…",
+    u"새 부품이 맞는지 대어 보는 중…",
+    u"설치 기사님이 신발을 벗는 중…",
+    u"벽에 새 달력을 거는 중…",
+    u"패치 노트를 소리 내어 읽는 중…",
+    u"새 버전과 악수하는 중…",
+    u"먼지 쌓인 코드를 털어 내는 중…",
+    u"새 버전 향기를 맡는 중…",
+    u"이삿짐 상자 번호를 맞추는 중…",
+    u"새 문손잡이를 다는 중…",
+    u"창문을 열고 환기하는 중…",
+    u"버전 번호를 한 칸 올리는 중…",
+    u"새 열쇠로 문을 열어 보는 중…",
+    u"고양이가 상자 안에 들어가 버린 중…",
+    u"마지막 점검표에 체크하는 중…",
+    u"반짝반짝 광을 내는 중…",
+    u"택배 기사님께 고맙다고 인사하는 중…",
+    u"새 버전이 자리를 잡는 중…",
+};
+
 template <size_t N>
 static void addAll(QStringList& out, const char16_t* const (&list)[N]) {
     for (const char16_t* q : list)
@@ -182,6 +215,7 @@ QStringList quipsFor(Quips set) {
     case Quips::Organize: addAll(out, ORGANIZE); break;
     case Quips::Import: addAll(out, IMPORT); break;
     case Quips::Bisect: addAll(out, BISECT); break;
+    case Quips::Update: addAll(out, UPDATE); break;
     default: break;
     }
     return out;

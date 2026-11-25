@@ -88,6 +88,8 @@ int main(int argc, char** argv) {
         app.setWindowIcon(QIcon(icon));
     try {
         coreInit();
+        // 지난 업데이트에서 남은 옛 파일과 받아 둔 업데이트 파일을 정리한다.
+        coreCall("update.cleanup", {{"app_dir"_L1, QDir::toNativeSeparators(QCoreApplication::applicationDirPath())}});
     } catch (const CoreError& ex) {
         unexpected(ex.msg);
         return 1;

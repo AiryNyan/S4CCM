@@ -166,9 +166,54 @@ pub fn extract(pk: &mut Package, out_path: &str) -> Option<String> {
 
 /// 포즈 팩의 아이콘을 모두 `out_dir/01.jpg, 02.jpg …` 로 꺼낸다 (패키지 안 순서 그대로).
 /// 이미 꺼내 둔 것이 있으면 그대로 돌려준다. 애니메이션이 없는 패키지는 빈 목록.
+/// 포즈 아이콘 디스크 캐시(`thumbs\poses`) 한도. 넘으면 가장 오래 안 본 팩부터 지운다 (다시 보면 새로 꺼낸다).
+pub const POSE_CACHE_LIMIT: u64 = 64 * 1024 * 1024;
+
+fn dir_size(dir: &std::path::Path) -> u64 {
+    std::fs::read_dir(dir)
+        .map(|rd| rd.flatten().filter_map(|e| e.metadata().ok()).filter(|m| m.is_file()).map(|m| m.len()).sum())
+        .unwrap_or(0)
+}
+
+/// `cache_root` 아래 팩 폴더들의 합이 `limit` 을 넘으면, 마지막으로 본 때(done 표시 파일 시각)가 오래된 것부터 지운다.
+pub fn prune_cache(cache_root: &str, limit: u64, keep: &str) {
+    let Ok(rd) = std::fs::read_dir(cache_root) else { return };
+    let mut dirs: Vec<(std::time::SystemTime, u64, std::path::PathBuf)> = rd
+        .flatten()
+        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .map(|e| {
+            let p = e.path();
+            let seen = std::fs::metadata(p.join("done"))
+                .or_else(|_| e.metadata())
+                .and_then(|m| m.modified())
+                .unwrap_or(std::time::UNIX_EPOCH);
+            (seen, dir_size(&p), p)
+        })
+        .collect();
+    let mut total: u64 = dirs.iter().map(|d| d.1).sum();
+    if total <= limit {
+        return;
+    }
+    dirs.sort_by_key(|d| d.0);
+    let keep = std::path::Path::new(keep);
+    for (_, size, p) in dirs {
+        if total <= limit {
+            break;
+        }
+        if p == keep {
+            continue;
+        }
+        if std::fs::remove_dir_all(&p).is_ok() {
+            total = total.saturating_sub(size);
+        }
+    }
+}
+
 pub fn extract_all(path: &str, out_dir: &str) -> Vec<String> {
     let done = crate::pyos::join(out_dir, "done");
     if crate::pyos::exists(&done) {
+        // 마지막으로 본 때를 남겨 캐시 정리 때 늦게 지워지게 한다.
+        let _ = std::fs::write(&done, b"");
         let mut names: Vec<String> = crate::pyos::listdir(out_dir)
             .unwrap_or_default()
             .into_iter()
@@ -195,5 +240,32 @@ pub fn extract_all(path: &str, out_dir: &str) -> Vec<String> {
         }
     }
     let _ = std::fs::write(&done, b"");
+    prune_cache(&crate::pyos::dirname(out_dir), POSE_CACHE_LIMIT, out_dir);
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::prune_cache;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn prune_removes_oldest_but_keeps_current() {
+        let root = tempfile::tempdir().unwrap();
+        let mk = |name: &str, bytes: usize, age_secs: u64| {
+            let d = root.path().join(name);
+            std::fs::create_dir(&d).unwrap();
+            std::fs::write(d.join("001.jpg"), vec![0u8; bytes]).unwrap();
+            let done = std::fs::File::create(d.join("done")).unwrap();
+            done.set_modified(SystemTime::now() - Duration::from_secs(age_secs)).unwrap();
+            d
+        };
+        mk("old", 400, 300);
+        mk("mid", 400, 200);
+        let cur = mk("current", 400, 500); // 가장 오래됐지만 지금 보는 팩
+        prune_cache(root.path().to_str().unwrap(), 900, cur.to_str().unwrap());
+        assert!(!root.path().join("old").exists());
+        assert!(root.path().join("mid").exists());
+        assert!(cur.exists());
+    }
 }

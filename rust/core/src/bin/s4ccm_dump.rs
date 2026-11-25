@@ -320,6 +320,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             })
         }
         "thumb" => json!(thumbs::save_user_image_path(&args[1], &args[2])),
+        // update_check / update_get <installer|portable> / update_apply <zip> <프로그램 폴더>
+        "update_check" => {
+            let r = s4ccm_core::update::latest(s4ccm_core::update::REPO)?;
+            json!({"tag": r.tag, "assets": r.assets.iter().map(|a| json!([a.name, a.size, a.sha256])).collect::<Vec<_>>()})
+        }
+        "update_get" => {
+            let r = s4ccm_core::update::latest(s4ccm_core::update::REPO)?;
+            let a = s4ccm_core::update::pick_asset(&r, &args[1]).ok_or("no asset")?;
+            let t = Instant::now();
+            let mut calls = 0usize;
+            let path = s4ccm_core::update::download(a, Some(&mut |_i, _n, _t| calls += 1))?;
+            json!({"path": path, "secs": t.elapsed().as_secs_f64(), "progress_calls": calls})
+        }
+        "update_apply" => json!(s4ccm_core::update::apply_portable(&args[1], &args[2], None)?),
         // poseall <패키지> <출력 폴더>
         "poseall" => json!(s4ccm_core::poseicon::extract_all(&args[1], &args[2])),
         // poseicon <패키지> <출력.jpg>

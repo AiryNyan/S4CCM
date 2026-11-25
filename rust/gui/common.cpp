@@ -112,8 +112,16 @@ static QColor blend(const QString& fg, const QString& bg, double amount) {
     return QColor(r(a.red(), b.red()), r(a.green(), b.green()), r(a.blue(), b.blue()));
 }
 
-static QHash<QString, QIcon> g_iconCache;
-static QHash<QString, QPixmap> g_pixmapCache;   // "경로\n크기"
+// 썸네일 메모리 캐시. 용량(KB)에 한도를 두고, 넘치면 가장 오래 안 쓴 것부터 버린다.
+// (원본 Python 판은 한도 없이 쌓았다. CC 가 수천 개면 수백 MB 가 될 수 있다.)
+constexpr int ICON_CACHE_KB = 96 * 1024;     // 목록·중복 검사·트레이의 작은 아이콘
+constexpr int PIXMAP_CACHE_KB = 128 * 1024;  // 그리드 썸네일 (크기별)
+static QCache<QString, QIcon> g_iconCache(ICON_CACHE_KB);
+static QCache<QString, QPixmap> g_pixmapCache(PIXMAP_CACHE_KB);   // "경로\n크기"
+
+static int costKb(const QPixmap& pm) {
+    return qMax(1, int(qint64(pm.width()) * pm.height() * 4 / 1024));
+}
 static QHash<QString, QPixmap> g_placeholderCache;
 
 QPixmap placeholder(const QString& group, int size) {
@@ -156,11 +164,11 @@ QPixmap placeholder(const QString& group, int size) {
 QIcon itemIcon(const Item& item) {
     const QString& path = item.displayThumb;
     if (!path.isEmpty() && QFileInfo::exists(path)) {
-        auto found = g_iconCache.constFind(path);
-        if (found != g_iconCache.constEnd())
+        if (const QIcon* found = g_iconCache.object(path))
             return *found;
-        QIcon ic{QPixmap(path)};
-        g_iconCache.insert(path, ic);
+        const QPixmap pm(path);
+        QIcon ic{pm};
+        g_iconCache.insert(path, new QIcon(ic), costKb(pm));
         return ic;
     }
     return QIcon(placeholder(cats::groupOf(item.category)));
@@ -170,12 +178,14 @@ QPixmap itemPixmap(const Item& item, int size) {
     const QString& path = item.displayThumb;
     if (!path.isEmpty() && QFileInfo::exists(path)) {
         const QString key = path + u'\n' + QString::number(size);
-        QPixmap pm = g_pixmapCache.value(key);
-        if (!g_pixmapCache.contains(key)) {
+        QPixmap pm;
+        if (const QPixmap* found = g_pixmapCache.object(key)) {
+            pm = *found;
+        } else {
             pm = QPixmap(path);
             if (!pm.isNull()) {
                 pm = pm.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                g_pixmapCache.insert(key, pm);
+                g_pixmapCache.insert(key, new QPixmap(pm), costKb(pm));
             }
         }
         if (!pm.isNull())
@@ -189,11 +199,9 @@ void forgetIcon(const QString& path) {
         return;
     g_iconCache.remove(path);
     const QString prefix = path + u'\n';
-    for (auto it = g_pixmapCache.begin(); it != g_pixmapCache.end();)
-        if (it.key().startsWith(prefix))
-            it = g_pixmapCache.erase(it);
-        else
-            ++it;
+    for (const QString& k : g_pixmapCache.keys())
+        if (k.startsWith(prefix))
+            g_pixmapCache.remove(k);
 }
 
 CategoryCombo::CategoryCombo(QWidget* parent, bool includeScript) : QComboBox(parent) {
@@ -491,8 +499,8 @@ namespace {
 
 class LoadingOverlay : public QWidget {
 public:
-    LoadingOverlay(QWidget* window, const QString& titleText, Quips quipSet)
-        : QWidget(window), window_(window), quips_(quipsFor(quipSet)),
+    LoadingOverlay(QWidget* window, const QString& titleText, Quips quipSet, bool showCount)
+        : QWidget(window), window_(window), showCount_(showCount), quips_(quipsFor(quipSet)),
           showSteps_(quipSet == Quips::Organize || quipSet == Quips::Import || quipSet == Quips::Bisect) {
         setAttribute(Qt::WA_StyledBackground, false);
         setFocusPolicy(Qt::StrongFocus);
@@ -571,7 +579,8 @@ public:
         if (n > 0) {
             bar->setRange(0, n);
             bar->setValue(qMin(i, n));
-            count->setText(u"%1 / %2"_s.arg(qMin(i, n)).arg(n));
+            if (showCount_)
+                count->setText(u"%1 / %2"_s.arg(qMin(i, n)).arg(n));
             percent->setText(u"%1%"_s.arg(int(100.0 * qMin(i, n) / n)));
         }
         QString name;
@@ -592,6 +601,7 @@ public:
     }
 
     QWidget* window_;
+    bool showCount_ = true;
 
 protected:
     void paintEvent(QPaintEvent*) override {
@@ -614,9 +624,9 @@ private:
 
 }
 
-QJsonValue runWithLoading(QWidget* parent, const QString& title, const std::function<QJsonValue(const LoadProgress&)>& fn, Quips quips) {
+QJsonValue runWithLoading(QWidget* parent, const QString& title, const std::function<QJsonValue(const LoadProgress&)>& fn, Quips quips, bool showCount) {
     QWidget* window = parent->window();
-    auto* overlay = new LoadingOverlay(window, title, quips);
+    auto* overlay = new LoadingOverlay(window, title, quips, showCount);
     overlay->show();
     overlay->raise();
     overlay->setFocus();

@@ -46,5 +46,18 @@ Name: "{autodesktop}\S4CCM"; Filename: "{app}\S4CCM.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\S4CCM.exe"; Description: "{cm:LaunchProgram,S4CCM}"; Flags: nowait postinstall skipifsilent
+; 프로그램 안의 자동 업데이트가 /UPDATE 를 붙여 조용히 설치하면, 끝난 뒤 다시 켠다.
+Filename: "{app}\S4CCM.exe"; Flags: nowait; Check: IsUpdate
 
-; user data (%APPDATA%\S4CCM: memos, previews, settings) is kept on uninstall and on updates
+[Code]
+function IsUpdate: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/UPDATE') = 0 then
+      Result := True;
+end;
+
+// user data (%APPDATA%\S4CCM: memos, previews, settings) is kept on uninstall and on updates

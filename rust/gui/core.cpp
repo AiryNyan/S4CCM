@@ -119,6 +119,7 @@ static void readConfig(const QJsonObject& o) {
     c.gameExe = o["game_exe"_L1].toString();
     c.theme = o["theme"_L1].toString();
     c.viewMode = o["view_mode"_L1].toString();
+    c.skipVersion = o["skip_version"_L1].toString();
     c.modsDir = o["mods_dir"_L1].toString();
     c.clearThumbcacheOnLaunch = o["clear_thumbcache_on_launch"_L1].toBool();
     c.thumbSize = o["thumb_size"_L1].toInt(128);
@@ -136,6 +137,7 @@ void coreInit() {
     Core& c = core();
     readConfig(o["config"_L1].toObject());
     c.appDir = o["app_dir"_L1].toString();
+    c.version = o["version"_L1].toString();
     c.thumbsDir = o["thumbs_dir"_L1].toString();
     c.disabledDir = o["disabled_dir"_L1].toString();
     c.quarantineDir = o["quarantine_dir"_L1].toString();

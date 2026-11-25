@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS ops (
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS res_ids (fp TEXT NOT NULL, inst INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS res_ids_fp ON res_ids(fp);
+CREATE TABLE IF NOT EXISTS item_keys (fp TEXT NOT NULL, type INTEGER NOT NULL, inst INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS item_keys_fp ON item_keys(fp);
 CREATE TABLE IF NOT EXISTS remembered (
     fingerprint TEXT PRIMARY KEY,
     category TEXT NOT NULL,
@@ -324,6 +326,17 @@ impl Db {
         Ok(())
     }
 
+    /// `update_item` 과 같지만 바로 확정(commit)하지 않는다. 스캔이 끝날 때 한 번에 확정한다.
+    pub fn update_item_deferred(&self, item_id: i64, f: Fields) -> Result<()> {
+        let sets: Vec<String> = f.0.iter().map(|e| format!("{}=?", e.0)).collect();
+        let mut vals: Vec<Sql> = f.0.into_iter().map(|e| e.1).collect();
+        vals.push(Sql::Integer(item_id));
+        let conn = self.conn.lock();
+        begin(&conn)?;
+        conn.execute(&format!("UPDATE items SET {} WHERE id=?", sets.join(", ")), params_from_iter(vals.iter()))?;
+        Ok(())
+    }
+
     pub fn rename_path(&self, old_rel: &str, new_rel: &str, extra: Fields) -> Result<()> {
         let conn = self.conn.lock();
         begin(&conn)?;
@@ -470,6 +483,30 @@ impl Db {
             st.execute(params![fp, i as i64])?;
         }
         Ok(())
+    }
+
+    /// 중복 검사용 아이템 키(CAS 파츠·오브젝트의 타입+인스턴스)를 저장한다. (Python 판에는 없는 표)
+    pub fn set_item_keys(&self, fp: &str, keys: &[(u32, u64)]) -> Result<()> {
+        let conn = self.conn.lock();
+        begin(&conn)?;
+        conn.prepare_cached("DELETE FROM item_keys WHERE fp=?")?.execute([fp])?;
+        let mut st = conn.prepare_cached("INSERT INTO item_keys (fp, type, inst) VALUES (?, ?, ?)")?;
+        for &(t, i) in keys {
+            st.execute(params![fp, t as i64, i as i64])?;
+        }
+        Ok(())
+    }
+
+    /// 지문 → 아이템 키 (저장한 순서 그대로).
+    pub fn item_keys_map(&self) -> Result<HashMap<String, Vec<(u32, u64)>>> {
+        let conn = self.conn.lock();
+        let mut st = conn.prepare("SELECT fp, type, inst FROM item_keys ORDER BY rowid")?;
+        let mut out: HashMap<String, Vec<(u32, u64)>> = HashMap::new();
+        let mut rows = st.query([])?;
+        while let Some(r) = rows.next()? {
+            out.entry(r.get(0)?).or_default().push((r.get::<_, i64>(1)? as u32, r.get::<_, i64>(2)? as u64));
+        }
+        Ok(out)
     }
 
     /// 리소스 인스턴스 ID → 그 리소스를 가진 파일 지문들.

@@ -22,5 +22,6 @@ pub mod saves;
 pub mod scriptmods;
 pub mod thumbs;
 pub mod tray;
+pub mod update;
 
 pub use error::{Error, Result};

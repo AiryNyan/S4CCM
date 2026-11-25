@@ -7,7 +7,7 @@ use crate::error::Result;
 use crate::pyos;
 
 pub const APP_NAME: &str = "S4CCM";
-pub const VERSION: &str = "1.3.0";
+pub const VERSION: &str = "1.4.0";
 
 pub fn app_dir() -> String {
     let base = match std::env::var("S4CCM_HOME").ok().filter(|s| !s.is_empty()) {
@@ -34,6 +34,8 @@ pub struct Config {
     pub clear_thumbcache_on_launch: bool,
     pub theme: String,
     pub view_mode: String,
+    /// 업데이트 창에서 [이 버전 건너뛰기]를 누른 버전 (예: "v1.4.0"). Python 판에는 없는 값.
+    pub skip_version: String,
     pub thumb_size: i64,
     pub folder_overrides: IndexMap<String, String>,
 }
@@ -46,6 +48,7 @@ impl Default for Config {
             clear_thumbcache_on_launch: false,
             theme: "system".into(),
             view_mode: "grid".into(),
+            skip_version: String::new(),
             thumb_size: 128,
             folder_overrides: IndexMap::new(),
         }
@@ -82,6 +85,7 @@ impl Config {
         s("game_exe", &mut c.game_exe);
         s("theme", &mut c.theme);
         s("view_mode", &mut c.view_mode);
+        s("skip_version", &mut c.skip_version);
         if let Some(v) = data.get("clear_thumbcache_on_launch").and_then(|v| v.as_bool()) {
             c.clear_thumbcache_on_launch = v;
         }
@@ -104,6 +108,7 @@ impl Config {
             "clear_thumbcache_on_launch": self.clear_thumbcache_on_launch,
             "theme": self.theme,
             "view_mode": self.view_mode,
+            "skip_version": self.skip_version,
             "thumb_size": self.thumb_size,
             "folder_overrides": overrides,
         })

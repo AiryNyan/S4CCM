@@ -53,8 +53,13 @@ private:
     void importPaths(QStringList paths);
     void checkScriptOptions();
     void elevateRelocate(const QString& dest);
+    // 자동 업데이트 (GitHub 릴리스)
+    void checkForUpdate();
+    void offerUpdate(const QJsonObject& release);
+    void runUpdate(const QJsonObject& release);
 
     Async scan_;
+    Async updateCheck_;
     QString scanError_;
     bool scanFailed_ = false;
     bool rescanPending_ = false, closing_ = false;

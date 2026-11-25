@@ -19,7 +19,7 @@ use s4ccm_core::importer::{self, ImportPlan};
 use s4ccm_core::library::{truthy, Library, MovePlan, Progress, UserImage};
 use s4ccm_core::resourcecfg::{self as rc, ResourceCfg, Rule};
 use s4ccm_core::tray::{self, TrayEntry};
-use s4ccm_core::{categories as cats, duplicates, launcher, paths, pyos, relocate};
+use s4ccm_core::{categories as cats, duplicates, launcher, paths, pyos, relocate, update};
 use s4ccm_core::{Error, Result};
 
 pub type ProgressCb = Option<unsafe extern "C" fn(*mut c_void, u64, u64, *const c_char)>;
@@ -361,6 +361,36 @@ fn dispatch(method: &str, a: &Value, mut progress: Progress) -> Result<Value> {
         }
         "rc.set_option" => return Ok(json!(rc::set_option(&s(a, "sims"), &s(a, "key"), &s(a, "value"))?)),
         "launcher.running" => return Ok(json!(launcher::game_running())),
+        // ---- 자동 업데이트 (GitHub 릴리스)
+        "update.check" => {
+            // 새 버전이 없으면 null. 있으면 릴리스 정보와 이 설치 방식에 맞는 파일.
+            let current = s(a, "current");
+            let rel = update::latest(update::REPO)?;
+            if !update::is_newer(&rel.tag, &current) {
+                return Ok(Value::Null);
+            }
+            let kind = update::install_kind(&s(a, "app_dir"));
+            let asset = update::pick_asset(&rel, kind)
+                .map(|x| json!({"name": x.name, "url": x.url, "size": x.size, "sha256": x.sha256}));
+            return Ok(json!({
+                "tag": rel.tag, "name": rel.name, "body": rel.body, "html_url": rel.html_url,
+                "kind": kind, "asset": asset,
+            }));
+        }
+        "update.download" => {
+            let asset = update::Asset {
+                name: s(a, "name"),
+                url: s(a, "url"),
+                size: a.get("size").and_then(|v| v.as_u64()).unwrap_or(0),
+                sha256: opt_s(a, "sha256").map(|x| x.to_lowercase()),
+            };
+            return Ok(json!(update::download(&asset, progress)?));
+        }
+        "update.apply_portable" => return Ok(json!(update::apply_portable(&s(a, "zip"), &s(a, "app_dir"), progress)?)),
+        "update.cleanup" => {
+            update::cleanup(&s(a, "app_dir"));
+            return Ok(Value::Null);
+        }
         "launcher.launch" => {
             launcher::launch(&s(a, "exe"), &s(a, "sims"), b(a, "clear"))?;
             return Ok(Value::Null);
@@ -381,6 +411,7 @@ fn dispatch(method: &str, a: &Value, mut progress: Progress) -> Result<Value> {
                         ("game_exe", Value::String(x)) => c.game_exe = x.clone(),
                         ("theme", Value::String(x)) => c.theme = x.clone(),
                         ("view_mode", Value::String(x)) => c.view_mode = x.clone(),
+                        ("skip_version", Value::String(x)) => c.skip_version = x.clone(),
                         ("clear_thumbcache_on_launch", Value::Bool(x)) => c.clear_thumbcache_on_launch = *x,
                         ("thumb_size", x) => c.thumb_size = x.as_i64().unwrap_or(c.thumb_size),
                         _ => {}

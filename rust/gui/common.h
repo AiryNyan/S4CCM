@@ -35,10 +35,11 @@ using LoadProgress = std::function<void(int, int, const QString&, const QString&
 bool isBusy();
 // 창 위에 진행 표시를 띄우고 fn 을 다른 스레드에서 실행한다. fn 이 던진 CoreError 는 그대로 다시 던진다.
 // 로딩 창 두 번째 줄에 돌아가며 보여 줄 멘트 묶음. None 이면 단계 이름을 보여 준다.
-enum class Quips { None, Common, Tray, Organize, Import, Bisect };
+enum class Quips { None, Common, Tray, Organize, Import, Bisect, Update };
 QStringList quipsFor(Quips set);   // 공통 + 묶음 멘트 (quips.cpp)
+// showCount 가 false 면 "3 / 80" 같은 개수 칸을 숨긴다 (다운로드처럼 개수가 의미 없을 때).
 QJsonValue runWithLoading(QWidget* parent, const QString& title, const std::function<QJsonValue(const LoadProgress&)>& fn,
-                          Quips quips = Quips::None);
+                          Quips quips = Quips::None, bool showCount = true);
 
 // 진행 단계 이름을 붙여 코어 호출에 넘길 콜백을 만든다.
 inline ProgressFn phased(const LoadProgress& progress, const QString& phase) {

@@ -71,6 +71,48 @@ pub fn fingerprint(path: &str) -> std::io::Result<String> {
     Ok(hex(&h.finalize())[..24].to_string())
 }
 
+/// 파일 읽기 전용 스레드 묶음. 스캔은 디스크를 기다리는 시간이 대부분이라 CPU 수보다 많이 동시에 읽는다.
+/// (CPU 수 × 2, 최소 8 · 최대 16. 측정용으로 환경 변수 `S4CCM_IO_THREADS` 로 바꿀 수 있다.)
+pub fn io_pool() -> &'static rayon::ThreadPool {
+    static POOL: std::sync::OnceLock<rayon::ThreadPool> = std::sync::OnceLock::new();
+    POOL.get_or_init(|| {
+        let cpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
+        let n = std::env::var("S4CCM_IO_THREADS")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|&n| (1..=64).contains(&n))
+            .unwrap_or_else(|| (cpus * 2).clamp(8, 16));
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(n)
+            .thread_name(|i| format!("s4ccm-io-{i}"))
+            .build()
+            .expect("io thread pool")
+    })
+}
+
+/// 지문을 계산하면서 같은 파일 핸들과 읽은 앞·뒷부분으로 패키지도 연다 (스캔용).
+/// 지문은 `fingerprint` 와 똑같다. 패키지가 아니거나 깨졌으면 두 번째 값이 오류다.
+pub fn open_fingerprinted(path: &str) -> std::io::Result<(String, std::result::Result<Package, crate::dbpf::DbpfError>)> {
+    let mut f = std::fs::File::open(path)?;
+    let size = f.metadata()?.len();
+    let mut h = Sha1::new();
+    h.update(size.to_string().as_bytes());
+    let mut head = Vec::with_capacity(65536);
+    (&mut f).take(65536).read_to_end(&mut head)?;
+    h.update(&head);
+    let mut tail = None;
+    if size > 131072 {
+        f.seek(SeekFrom::End(-65536))?;
+        let mut buf = Vec::with_capacity(65536);
+        (&mut f).take(65536).read_to_end(&mut buf)?;
+        h.update(&buf);
+        tail = Some((size - buf.len() as u64, buf));
+    }
+    let fp = hex(&h.finalize())[..24].to_string();
+    let pk = Package::open_from_parts(path, f, &head, tail.as_ref().map(|(s, b)| (*s, b.as_slice())));
+    Ok((fp, pk))
+}
+
 /// 이름의 첫 구분자(`_ - . 공백`) 앞부분, 소문자.
 pub fn token(name: &str) -> String {
     name.split(|c: char| c == '_' || c == '-' || c == '.' || c.is_whitespace()).next().unwrap_or("").to_lowercase()
@@ -148,6 +190,8 @@ struct Backfill {
     ids: Vec<u64>,
     /// 포즈 팩 아이콘을 찾아봤으면 Some (찾은 썸네일 경로).
     pose: Option<Option<String>>,
+    /// 중복 검사용 아이템 키를 새로 읽었으면 Some.
+    keys: Option<Vec<(u32, u64)>>,
 }
 
 struct Fresh {
@@ -158,6 +202,7 @@ struct Fresh {
     thumb: Option<String>,
     tex: Option<(u32, u32)>,
     ids: Vec<u64>,
+    keys: Vec<(u32, u64)>,
 }
 
 fn tex_json(tex: Option<(u32, u32)>) -> Value {
@@ -359,40 +404,49 @@ impl Library {
                 let meta = parse_meta(row.meta.as_deref());
                 let has_tex = meta.contains_key("tex");
                 let need_pose = row.category == "animations" && !meta.contains_key("pose_icon");
-                if has_tex && meta.get("ids").map_or(false, truthy) && !need_pose {
+                let need_keys = !meta.contains_key("keys");
+                if has_tex && meta.get("ids").map_or(false, truthy) && !need_pose && !need_keys {
                     return Work::Unchanged { backfill: None };
                 }
-                let (tex, ids, pose) = match Package::open(&abs_p) {
+                let (tex, ids, pose, keys) = match Package::open(&abs_p) {
                     Ok(mut pk) => {
                         let tex = if has_tex { None } else { Some(classify::texture_size_of(&mut pk)) };
                         let pose = if need_pose { Some(self.pose_thumb(&mut pk, &row.fingerprint)) } else { None };
-                        (tex, classify::resource_ids_of(&pk), pose)
+                        let keys = need_keys.then(|| crate::duplicates::keys_of(&pk));
+                        (tex, classify::resource_ids_of(&pk), pose, keys)
                     }
-                    Err(_) => (if has_tex { None } else { Some(None) }, Vec::new(), need_pose.then_some(None)),
+                    Err(_) => (
+                        if has_tex { None } else { Some(None) },
+                        Vec::new(),
+                        need_pose.then_some(None),
+                        need_keys.then(Vec::new),
+                    ),
                 };
-                return Work::Unchanged { backfill: Some(Backfill { tex, ids, pose }) };
+                return Work::Unchanged { backfill: Some(Backfill { tex, ids, pose, keys }) };
             }
         }
-        let fp = match fingerprint(&abs_p) {
-            Ok(fp) => fp,
+        // 지문 계산과 패키지 열기를 한 번에 해서 파일 읽기 횟수를 줄인다.
+        let (fp, opened) = match open_fingerprinted(&abs_p) {
+            Ok(x) => x,
             Err(e) => return Work::Failed(e.to_string()),
         };
         if row.map_or(false, |r| r.fingerprint == fp) {
             return Work::SameFp { fp, size, mtime };
         }
-        let fresh = match Package::open(&abs_p) {
+        let fresh = match opened {
             Ok(mut pk) => {
                 let c = classify::classify_open(&mut pk);
                 let instances: Vec<u64> = c.casp_instances.iter().chain(&c.object_instances).copied().collect();
                 let thumb = self.thumb_for(Some(&mut pk), &fp, &instances);
                 let tex = classify::texture_size_of(&mut pk);
                 let ids = classify::resource_ids_of(&pk);
-                Fresh { fp, size, mtime, c, thumb, tex, ids }
+                let keys = crate::duplicates::keys_of(&pk);
+                Fresh { fp, size, mtime, c, thumb, tex, ids, keys }
             }
             Err(ex) => {
                 let c = classify::classify_failed(&ex);
                 let thumb = self.thumb_for(None, &fp, &[]);
-                Fresh { fp, size, mtime, c, thumb, tex: None, ids: Vec::new() }
+                Fresh { fp, size, mtime, c, thumb, tex: None, ids: Vec::new(), keys: Vec::new() }
             }
         };
         Work::Fresh(Box::new(fresh))
@@ -467,10 +521,10 @@ impl Library {
 
         // 무거운 읽기(지문·분류·썸네일·텍스처)는 묶음 단위로 병렬 처리하고,
         // DB 반영은 원래 순서대로 한다.
-        const CHUNK: usize = 64;
+        const CHUNK: usize = 128;
         for (ci, chunk) in packages.chunks(CHUNK).enumerate() {
-            let works: Vec<Work> =
-                chunk.par_iter().map(|(rel, status)| self.examine(rel, status, known.get(rel))).collect();
+            let works: Vec<Work> = io_pool()
+                .install(|| chunk.par_iter().map(|(rel, status)| self.examine(rel, status, known.get(rel))).collect());
             for (k, ((rel, status), work)) in chunk.iter().zip(works).enumerate() {
                 let j = ci * CHUNK + k;
                 seen.insert(rel);
@@ -490,6 +544,10 @@ impl Library {
                         }
                         self.db.set_res_ids(&row.fingerprint, &b.ids)?;
                         meta.insert("ids".into(), Value::Bool(true));
+                        if let Some(keys) = &b.keys {
+                            self.db.set_item_keys(&row.fingerprint, keys)?;
+                            meta.insert("keys".into(), Value::Bool(true));
+                        }
                         let mut fields = Fields::new();
                         if let Some(pose) = b.pose {
                             meta.insert("pose_icon".into(), Value::Bool(true));
@@ -497,7 +555,7 @@ impl Library {
                                 fields = fields.opt("thumb", pose);
                             }
                         }
-                        self.db.update_item(row.id, fields.json("meta", &Value::Object(meta)))?;
+                        self.db.update_item_deferred(row.id, fields.json("meta", &Value::Object(meta)))?;
                     }
                     Work::SameFp { fp, size, mtime } => {
                         let row = row.expect("same-fingerprint row");
@@ -514,7 +572,7 @@ impl Library {
                         )?;
                     }
                     Work::Fresh(f) => {
-                        let Fresh { fp, size, mtime, c, thumb, tex, ids } = *f;
+                        let Fresh { fp, size, mtime, c, thumb, tex, ids, keys } = *f;
                         let same = self.db.by_fingerprint(&fp)?;
                         let mut category = c.category.clone();
                         let mut user_set = 0i64;
@@ -536,6 +594,7 @@ impl Library {
                             user_set = 1;
                         }
                         self.db.set_res_ids(&fp, &ids)?;
+                        self.db.set_item_keys(&fp, &keys)?;
                         let added_at =
                             prev.map(|p| p.added_at).or(mem.as_ref().map(|m| m.added_at)).unwrap_or_else(pyos::now);
                         let instances: Vec<String> = c.casp_instances.iter().take(50).map(|x| x.to_string()).collect();
@@ -546,6 +605,7 @@ impl Library {
                             "tex": tex_json(tex),
                             "hq": classify::is_hq(tex),
                             "ids": true,
+                            "keys": true,
                         });
                         self.db.upsert(
                             Fields::new()

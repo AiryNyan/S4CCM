@@ -114,6 +114,9 @@ MainWindow::MainWindow() {
     viewAct->setText(cfg().viewMode == u"list"_s ? u"그리드 보기"_s : u"목록 보기"_s);
     library->setScope(u"전체"_s, QString(), QString(), INSTALLED);
     QTimer::singleShot(0, this, [this] { startup(); });
+    // 켤 때 한 번, 시작 스캔이 끝난 뒤 백그라운드에서 새 버전을 확인한다.
+    if (!qEnvironmentVariableIsSet("S4CCM_SELFTEST"))
+        QTimer::singleShot(2000, this, [this] { checkForUpdate(); });
 }
 
 QAction* MainWindow::act(QToolBar* tb, const QString& text, std::function<void()> fn, const QKeySequence& shortcut, const QString& tip) {
@@ -698,4 +701,142 @@ void MainWindow::resumeRelocate(const QString& dest) {
     goTo(u"symlink"_s);
     const bool ok = symlink->runRelocate(dest, true);
     QApplication::exit(ok ? 0 : 1);
+}
+
+// ---------------------------------------------------------------- 자동 업데이트
+
+static QString currentVersion() {
+    // S4CCM_TEST_CURRENT_VERSION: 검증용. 지금 버전을 낮게 속여 업데이트 흐름을 시험한다.
+    const QString fake = qEnvironmentVariable("S4CCM_TEST_CURRENT_VERSION");
+    return fake.isEmpty() ? core().version : fake;
+}
+
+void MainWindow::checkForUpdate() {
+    if (isBusy() || QApplication::activeModalWidget()) {   // 시작 스캔이나 다른 창이 끝날 때까지 기다린다
+        QTimer::singleShot(1000, this, [this] { checkForUpdate(); });
+        return;
+    }
+    if (updateCheck_.active)
+        return;
+    auto found = std::make_shared<QJsonObject>();
+    const QString current = currentVersion();
+    const QString appDir = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
+    updateCheck_.start(
+        this,
+        [found, current, appDir] {
+            try {
+                const QJsonValue v = coreCall("update.check", {{"current"_L1, current}, {"app_dir"_L1, appDir}});
+                if (v.isObject())
+                    *found = v.toObject();
+            } catch (const CoreError&) {
+                // 인터넷이 없거나 GitHub 확인 횟수 제한 등: 조용히 넘어간다 (다음 실행 때 다시 확인).
+            }
+        },
+        [this, found] {
+            updateCheck_.join();
+            if (found->isEmpty())
+                return;
+            if ((*found)["tag"_L1].toString() == cfg().skipVersion)
+                return;   // 사용자가 건너뛰기로 한 버전
+            offerUpdate(*found);
+        });
+}
+
+void MainWindow::offerUpdate(const QJsonObject& release) {
+    if (isBusy() || QApplication::activeModalWidget()) {
+        QTimer::singleShot(1000, this, [this, release] { offerUpdate(release); });
+        return;
+    }
+    const QString tag = release["tag"_L1].toString();
+    QStringList notes = release["body"_L1].toString().split(u'\n');
+    for (QString& l : notes)
+        l = l.trimmed();
+    while (!notes.isEmpty() && notes.last().isEmpty())
+        notes.removeLast();
+    if (notes.size() > 14) {
+        notes = notes.mid(0, 14);
+        notes << u"…"_s;
+    }
+    QMessageBox box(this);
+    box.setWindowTitle(u"업데이트"_s);
+    box.setIcon(QMessageBox::Information);
+    box.setText(u"새 버전이 확인되었습니다."_s);
+    box.setInformativeText(u"S4CCM %1  (지금 버전 v%2)\n\n%3"_s.arg(tag, core().version, notes.join(u'\n')));
+    QPushButton* update = box.addButton(u"업데이트하기"_s, QMessageBox::AcceptRole);
+    update->setObjectName(u"primary"_s);
+    repolish(update);
+    QPushButton* skip = box.addButton(u"이 버전 건너뛰기"_s, QMessageBox::RejectRole);
+    box.setDefaultButton(update);
+    box.setEscapeButton(static_cast<QAbstractButton*>(nullptr));
+    box.exec();
+    if (box.clickedButton() == skip) {
+        setConfig({{"skip_version"_L1, tag}}, true);
+        statusLabel_->setText(u"%1 업데이트를 건너뛰었습니다. 다음 새 버전이 나오면 다시 알려 드립니다."_s.arg(tag));
+    } else if (box.clickedButton() == update) {
+        runUpdate(release);
+    }
+}
+
+void MainWindow::runUpdate(const QJsonObject& release) {
+    const QString page = release["html_url"_L1].toString();
+    auto failed = [this, page](const QString& msg) {
+        QMessageBox box(this);
+        box.setWindowTitle(u"업데이트"_s);
+        box.setIcon(QMessageBox::Warning);
+        box.setText(u"업데이트하지 못했습니다."_s);
+        box.setInformativeText(msg + u"\n\n릴리스 페이지에서 직접 내려받을 수도 있습니다."_s);
+        QPushButton* open = box.addButton(u"릴리스 페이지 열기"_s, QMessageBox::AcceptRole);
+        box.addButton(u"닫기"_s, QMessageBox::RejectRole);
+        box.exec();
+        if (box.clickedButton() == open && !page.isEmpty())
+            QDesktopServices::openUrl(QUrl(page));
+    };
+    const QJsonObject asset = release["asset"_L1].toObject();
+    if (asset.isEmpty()) {
+        failed(u"이 설치 방식에 맞는 파일이 릴리스에 없습니다."_s);
+        return;
+    }
+    const QString kind = release["kind"_L1].toString();
+    QString file;
+    try {
+        file = runWithLoading(
+                   this, u"업데이트를 받는 중"_s,
+                   [asset](const LoadProgress& progress) { return coreCall("update.download", asset, phased(progress, QString())); },
+                   Quips::Update, false)
+                   .toString();
+    } catch (const CoreError& ex) {
+        failed(ex.msg);
+        return;
+    }
+    const QString exe = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+    if (kind == u"installer"_s) {
+        QMessageBox::information(this, u"업데이트"_s, u"새 버전을 설치합니다. S4CCM이 잠시 꺼졌다가 다시 켜집니다."_s);
+        if (!close())   // 충돌 테스트 진행 중이라 취소한 경우 등
+            return;
+        if (!QProcess::startDetached(file, {u"/SILENT"_s, u"/SUPPRESSMSGBOXES"_s, u"/NORESTART"_s, u"/UPDATE"_s})) {
+            show();
+            failed(u"설치 파일을 실행하지 못했습니다: "_s + file);
+            return;
+        }
+        QApplication::quit();
+        return;
+    }
+    // 포터블: 프로그램 폴더의 파일을 새 파일로 바꾸고 다시 켠다.
+    const QString appDir = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
+    try {
+        runWithLoading(
+            this, u"업데이트를 적용하는 중"_s,
+            [file, appDir](const LoadProgress& progress) {
+                return coreCall("update.apply_portable", {{"zip"_L1, file}, {"app_dir"_L1, appDir}}, phased(progress, QString()));
+            },
+            Quips::Update);
+    } catch (const CoreError& ex) {
+        failed(ex.msg);
+        return;
+    }
+    QMessageBox::information(this, u"업데이트"_s, u"업데이트를 마쳤습니다. S4CCM을 다시 켭니다."_s);
+    if (!close())
+        return;
+    QProcess::startDetached(exe, {});
+    QApplication::quit();
 }

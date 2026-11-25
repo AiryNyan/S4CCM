@@ -53,14 +53,14 @@ QString groupLabel(const QString& group);
 }
 
 struct Config {
-    QString simsDir, gameExe, theme, viewMode, modsDir;
+    QString simsDir, gameExe, theme, viewMode, modsDir, skipVersion;
     bool clearThumbcacheOnLaunch = false;
     int thumbSize = 128;
 };
 
 struct Core {
     Config config;
-    QString appDir, thumbsDir, disabledDir, quarantineDir, organizeLabel;
+    QString appDir, thumbsDir, disabledDir, quarantineDir, organizeLabel, version;
     QStringList clearedLabels, keptLabels;
     int maxDepth = 5;
 };

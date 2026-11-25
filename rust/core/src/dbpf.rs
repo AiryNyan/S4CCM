@@ -197,24 +197,69 @@ impl Package {
             }
             got += k;
         }
-        if got < 96 || &header[..4] != b"DBPF" {
+        if got < 96 {
             return Err(fmt_err("not a DBPF file"));
         }
-        let (major, minor) = (le32(&header, 4), le32(&header, 8));
+        let Some((count, index_pos, _)) = Self::parse_header(&header)? else { return Ok(Vec::new()) };
+        f.seek(SeekFrom::Start(index_pos as u64))?;
+        Self::parse_entries(IndexReader { r: BufReader::with_capacity(1 << 16, &mut *f) }, count)
+    }
+
+    /// 헤더(96바이트) → (리소스 수, 색인 위치, 색인 크기). 리소스가 없으면 None.
+    fn parse_header(header: &[u8]) -> Result<Option<(u32, u32, u32)>, DbpfError> {
+        if header.len() < 96 || &header[..4] != b"DBPF" {
+            return Err(fmt_err("not a DBPF file"));
+        }
+        let (major, minor) = (le32(header, 4), le32(header, 8));
         if major != 2 {
             return Err(fmt_err(format!("unsupported DBPF version {major}.{minor}")));
         }
-        let count = le32(&header, 36);
-        let mut index_pos = le32(&header, 64);
+        let count = le32(header, 36);
+        let mut index_pos = le32(header, 64);
         if index_pos == 0 {
-            index_pos = le32(&header, 40);
+            index_pos = le32(header, 40);
         }
         if count == 0 {
-            return Ok(Vec::new());
+            return Ok(None);
         }
+        Ok(Some((count, index_pos, le32(header, 44))))
+    }
 
-        f.seek(SeekFrom::Start(index_pos as u64))?;
-        let mut r = IndexReader { r: BufReader::with_capacity(1 << 16, &mut *f) };
+    /// 지문을 계산하느라 이미 읽어 둔 앞부분(head, 파일 처음부터)과 뒷부분(tail_start 부터)으로 연다.
+    /// 색인이 그 안에 들어 있으면 파일을 다시 읽지 않는다 (색인은 대개 파일 끝에 있다).
+    pub fn open_from_parts(
+        path: &str,
+        mut file: File,
+        head: &[u8],
+        tail: Option<(u64, &[u8])>,
+    ) -> Result<Package, DbpfError> {
+        let path = path.to_string();
+        let Some((count, index_pos, index_size)) = Self::parse_header(head)? else {
+            return Ok(Package { path, file, entries: Vec::new() });
+        };
+        let (pos, len) = (index_pos as u64, index_size as u64);
+        let in_buffer: Option<&[u8]> = if len == 0 {
+            None
+        } else if pos + len <= head.len() as u64 {
+            Some(&head[pos as usize..(pos + len) as usize])
+        } else {
+            tail.and_then(|(start, t)| {
+                (pos >= start && pos + len <= start + t.len() as u64)
+                    .then(|| &t[(pos - start) as usize..(pos - start + len) as usize])
+            })
+        };
+        if let Some(slice) = in_buffer {
+            // 색인 크기 값이 실제와 다른 패키지도 있으니, 버퍼로 안 되면 파일에서 다시 읽는다.
+            if let Ok(entries) = Self::parse_entries(IndexReader { r: slice }, count) {
+                return Ok(Package { path, file, entries });
+            }
+        }
+        file.seek(SeekFrom::Start(pos))?;
+        let entries = Self::parse_entries(IndexReader { r: BufReader::with_capacity(1 << 16, &mut file) }, count)?;
+        Ok(Package { path, file, entries })
+    }
+
+    fn parse_entries<R: Read>(mut r: IndexReader<R>, count: u32) -> Result<Vec<IndexEntry>, DbpfError> {
         let flags = r.u32()?;
         let const_type = if flags & 1 != 0 { Some(r.u32()?) } else { None };
         let const_group = if flags & 2 != 0 { Some(r.u32()?) } else { None };
